@@ -4,15 +4,63 @@ const server = express();
 
 server.use(express.json());
 
-const projects = ["MeuPet", "Pomodor", "AppContabil"];
+let numberOfRequests = 0;
+const projects = [];
+
+//Middleware global log requests
+server.use((req, res, next) => {
+  numberOfRequests++;
+
+  console.log(`Número de requisições: ${numberOfRequests}`);
+
+  return next();
+});
+
+//Middleware to check if the project exists
+function checkProjectExists(req, res, next) {
+  const { id } = req.params;
+  const project = projects.find(p => p.id === id);
+
+  if (!project) {
+    return res.status(400).json({ error: "Project not found" });
+  }
+  return next();
+}
 
 //Read all projects
 server.get("/projects", (req, res) => {
   return res.json(projects);
 });
 
-//Update one project
-server.put("/projects/:id", (req, res) => {
+//Create project
+server.post("/projects", (req, res) => {
+  const { id, title } = req.body;
+
+  const project = {
+    id,
+    title,
+    tasks: []
+  };
+
+  projects.push(project);
+
+  return res.json(project);
+});
+
+//Create tasks for project
+server.post("/projects/:id/tasks", checkProjectExists, (req, res) => {
+  const { id } = req.params;
+  const { task } = req.body;
+
+  const project = projects.find(p => p.id === id);
+
+  project.tasks.push(task);
+
+  return res.json(project);
+});
+
+//Update project
+server.put("/projects/:id", checkProjectExists, (req, res) => {
   const { id } = req.params;
   const { title } = req.body;
 
@@ -22,4 +70,16 @@ server.put("/projects/:id", (req, res) => {
   return res.json(project);
 });
 
+//Delete project
+server.delete("/projects/:id", checkProjectExists, (req, res) => {
+  const { id } = req.params;
+
+  const index = projects.findIndex(p => p.id === id);
+
+  projects.splice(index, 1);
+
+  return res.send();
+});
+
+//Definindo porta de escuta
 server.listen(3000);
